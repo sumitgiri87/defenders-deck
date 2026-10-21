@@ -18,7 +18,7 @@
     --bg:#0e1117; --panel:#161b22; --panel2:#1c2230; --ink:#e6edf3; --muted:#97a3b2;
     --line:#2b3340; --accent:#58a6ff; --risk:#ff7b72; --ctrl:#3fb950; --warn:#e3b341;
     --shadow:0 14px 48px rgba(0,0,0,.46);
-    --maxw:980px; --measure:62ch;
+    --maxw:1200px; --measure:60ch;
     --sans:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   }
@@ -91,8 +91,10 @@
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); padding:clamp(22px,3vw,32px)}
   .panel>b{display:block; font-weight:600; font-size:15px; margin-bottom:8px}
 
-  /* title */
-  .title-cta{display:flex; gap:14px; flex-wrap:wrap; margin-top:36px}
+  /* title — two columns: text left, panel right */
+  .title-grid{display:grid; grid-template-columns:1.15fr .85fr; gap:clamp(32px,5vw,72px); align-items:center}
+  .title-grid .lede{margin-bottom:0}
+  .title-cta{display:flex; gap:14px; flex-wrap:wrap; margin-top:30px}
   .btn{font-family:var(--sans); display:inline-flex; align-items:center; gap:9px; cursor:pointer;
        background:var(--accent); color:#fff; border:1px solid var(--accent); border-radius:11px;
        padding:14px 24px; font-size:16px; font-weight:600}
@@ -101,16 +103,18 @@
   .meta-row{display:flex; gap:14px 34px; flex-wrap:wrap; margin-top:18px; color:var(--muted); font-size:14.5px}
   .meta-row b{font-family:var(--mono); color:var(--ink); font-weight:500}
 
-  /* card */
+  /* card — question on the left, reveals on the right */
+  .card-grid{display:grid; grid-template-columns:0.95fr 1.05fr; gap:clamp(30px,4vw,60px); align-items:start}
+  .reveals{display:flex; flex-direction:column; gap:16px}
   .card-head{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:22px}
   .comp-chip{font-family:var(--mono); background:var(--panel2); border:1px solid var(--line);
              border-radius:8px; padding:6px 12px; font-weight:500; font-size:13.5px; color:var(--accent); letter-spacing:.02em}
   .card-head .count{font-family:var(--mono); color:var(--muted); font-size:12.5px}
   .ask{font-weight:600; font-size:clamp(22px,3vw,31px); line-height:1.22; letter-spacing:-.015em; text-wrap:balance; margin:0 0 14px}
   .ask-sub{color:var(--muted); font-size:16px; max-width:var(--measure); margin:0}
-  .reveal{border:1px solid var(--line); border-radius:14px; padding:0 22px; margin-top:16px;
+  .reveal{border:1px solid var(--line); border-radius:14px; padding:0 22px;
           max-height:0; overflow:hidden; opacity:0; transition:max-height .4s ease,opacity .35s ease,padding .4s ease}
-  .reveal.show{max-height:480px; opacity:1; padding:20px 22px}
+  .reveal.show{max-height:520px; opacity:1; padding:20px 22px}
   .reveal .tag{font-family:var(--mono); display:inline-flex; align-items:center; gap:8px; font-weight:500;
                font-size:12.5px; letter-spacing:.08em; text-transform:uppercase}
   .reveal.risk{background:color-mix(in srgb,var(--risk) 9%,transparent); border-color:color-mix(in srgb,var(--risk) 45%,var(--line))}
@@ -118,7 +122,7 @@
   .reveal.ctrl{background:color-mix(in srgb,var(--ctrl) 9%,transparent); border-color:color-mix(in srgb,var(--ctrl) 45%,var(--line))}
   .reveal.ctrl .tag{color:var(--ctrl)}
   .reveal h3{font-weight:600; margin:10px 0 7px; font-size:21px}
-  .reveal p{margin:7px 0 0; color:var(--ink); max-width:70ch}
+  .reveal p{margin:7px 0 0; color:var(--ink)}
   .reveal .foot{margin-top:12px; color:var(--muted); font-size:14px}
   .trifecta{font-family:var(--mono); display:inline-flex; align-items:center; color:var(--warn);
             border:1px solid color-mix(in srgb,var(--warn) 50%,var(--line)); border-radius:8px; padding:4px 10px; font-size:12px; font-weight:500}
@@ -154,6 +158,10 @@
   .end-list li::before{content:"\2192"; position:absolute; left:0; color:var(--accent)}
   .link{font-family:var(--mono); color:var(--accent); word-break:break-all; font-size:15px}
 
+  @media (max-width:860px){
+    .title-grid,.card-grid{grid-template-columns:1fr; gap:26px}
+    .title-grid .lede{margin-bottom:0}
+  }
   @media (max-width:720px){ .grid,.ten{grid-template-columns:1fr} }
 </style>
 </head>
@@ -318,23 +326,25 @@ function render(){
 }
 
 function tplTitle(){
-  return `<div class="slide">
-    <p class="eyebrow">Threat Modeling Connect · Toronto</p>
-    <h1>Defender's Deck</h1>
-    <p class="lede">We threat-model one AI agent together — as defenders. For each part of the
-    system you call the risk; the deck reveals where it lands in the <b>OWASP Top 10 for Agentic
-    Applications (2026)</b> and the control that stops it.</p>
+  return `<div class="slide title-grid">
+    <div>
+      <p class="eyebrow">Threat Modeling Connect · Toronto</p>
+      <h1>Defender's Deck</h1>
+      <p class="lede">We threat-model one AI agent together — as defenders. For each part of the
+      system you call the risk; the deck reveals where it lands in the <b>OWASP Top 10 for Agentic
+      Applications (2026)</b> and the control that stops it.</p>
+      <div class="title-cta">
+        <button class="btn" data-next>Start →</button>
+        <button class="btn ghost" data-goto="${SLIDES.findIndex(x=>x.type==='ten')}">See the full OWASP list</button>
+      </div>
+    </div>
     <div class="panel">
       <b>How this works</b>
-      <div class="meta-row">
+      <div class="meta-row" style="flex-direction:column; gap:14px">
         <span><b>7</b> components to defend</span>
         <span><b>10 min</b> — shout out risks before each reveal</span>
         <span>No live attack · no code runs · everything fictional</span>
       </div>
-    </div>
-    <div class="title-cta">
-      <button class="btn" data-next>Start →</button>
-      <button class="btn ghost" data-goto="${SLIDES.findIndex(x=>x.type==='ten')}">See the full OWASP list</button>
     </div>
   </div>`;
 }
@@ -359,26 +369,30 @@ function tplSystem(){
 }
 
 function tplCard(c,n){
-  return `<div class="slide">
-    <div class="card-head">
-      <span class="comp-chip">${esc(c.comp)}</span>
-      <span class="count">Card ${n} / ${CARDS.length}</span>
-      ${c.trifecta?`<span class="trifecta">⚠ lethal-trifecta leg</span>`:``}
-    </div>
-    <p class="ask">${esc(c.ask)}</p>
-    <p class="ask-sub">${esc(c.sub)}</p>
-
-    <div class="reveal risk" id="rv-risk">
-      <span class="tag">▲ Risk · ${esc(c.risk.id)}</span>
-      <h3>${esc(c.risk.name)}</h3>
-      <p>${esc(c.risk.body)}</p>
+  return `<div class="slide card-grid">
+    <div>
+      <div class="card-head">
+        <span class="comp-chip">${esc(c.comp)}</span>
+        <span class="count">Card ${n} / ${CARDS.length}</span>
+        ${c.trifecta?`<span class="trifecta">⚠ lethal-trifecta leg</span>`:``}
+      </div>
+      <p class="ask">${esc(c.ask)}</p>
+      <p class="ask-sub">${esc(c.sub)}</p>
     </div>
 
-    <div class="reveal ctrl" id="rv-ctrl">
-      <span class="tag">✓ Control</span>
-      <h3>${esc(c.ctrl.name)}</h3>
-      <p>${esc(c.ctrl.body)}</p>
-      <p class="foot">${esc(c.ctrl.foot)}</p>
+    <div class="reveals">
+      <div class="reveal risk" id="rv-risk">
+        <span class="tag">▲ Risk · ${esc(c.risk.id)}</span>
+        <h3>${esc(c.risk.name)}</h3>
+        <p>${esc(c.risk.body)}</p>
+      </div>
+
+      <div class="reveal ctrl" id="rv-ctrl">
+        <span class="tag">✓ Control</span>
+        <h3>${esc(c.ctrl.name)}</h3>
+        <p>${esc(c.ctrl.body)}</p>
+        <p class="foot">${esc(c.ctrl.foot)}</p>
+      </div>
     </div>
   </div>`;
 }
