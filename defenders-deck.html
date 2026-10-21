@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Defender's Deck</title>
+<meta name="description" content="A facilitator-driven, offline threat-modeling exercise: map an AI agent's attack surface to the OWASP Top 10 for Agentic Applications (2026) and the control that stops each risk.">
+<style>
+  :root{
+    --bg:#0e1117; --panel:#161b22; --panel2:#1c2230; --ink:#e6edf3; --muted:#9aa7b4;
+    --line:#2b3340; --accent:#58a6ff; --risk:#ff7b72; --ctrl:#3fb950; --warn:#e3b341;
+    --chip:#30363d; --shadow:0 10px 40px rgba(0,0,0,.45);
+    --maxw:1040px;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#f6f8fa; --panel:#ffffff; --panel2:#f0f3f7; --ink:#1f2328; --muted:#5b6672;
+      --line:#d0d7de; --accent:#0969da; --risk:#cf222e; --ctrl:#1a7f37; --warn:#9a6700;
+      --chip:#eaeef2; --shadow:0 10px 40px rgba(140,149,159,.25);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:17px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header.bar{
+    display:flex; align-items:center; gap:14px; padding:12px 20px;
+    border-bottom:1px solid var(--line); background:var(--panel);
+  }
+  .bar .logo{font-weight:800; letter-spacing:.3px; font-size:16px}
+  .bar .logo span{color:var(--accent)}
+  .bar .sub{color:var(--muted); font-size:13px}
+  .bar .spacer{flex:1}
+  .bar .progress{font-variant-numeric:tabular-nums; color:var(--muted); font-size:13px}
+  .bar button{
+    background:var(--chip); color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:6px 10px; font-size:13px; cursor:pointer;
+  }
+  .bar button:hover{border-color:var(--accent)}
+
+  main{flex:1; display:flex; align-items:center; justify-content:center; padding:28px 20px 16px}
+  .stage{width:100%; max-width:var(--maxw)}
+
+  /* progress rail */
+  .rail{display:flex; gap:6px; max-width:var(--maxw); margin:0 auto; padding:0 20px 14px; width:100%}
+  .rail i{height:5px; flex:1; border-radius:3px; background:var(--line)}
+  .rail i.done{background:var(--accent)}
+  .rail i.cur{background:var(--ink)}
+
+  footer.hint{
+    text-align:center; color:var(--muted); font-size:12.5px; padding:10px 20px 18px;
+  }
+  kbd{
+    font-family:inherit; background:var(--chip); border:1px solid var(--line);
+    border-bottom-width:2px; border-radius:6px; padding:1px 7px; font-size:12px; color:var(--ink);
+  }
+
+  /* generic slide */
+  .slide{animation:fade .25s ease}
+  @keyframes fade{from{opacity:0; transform:translateY(6px)}to{opacity:1; transform:none}}
+  .eyebrow{color:var(--accent); font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:12.5px; margin:0 0 10px}
+  h1{font-size:clamp(30px,5vw,54px); line-height:1.05; margin:0 0 14px; letter-spacing:-.02em}
+  h2{font-size:clamp(23px,3.4vw,36px); line-height:1.1; margin:0 0 10px; letter-spacing:-.01em}
+  .lede{font-size:clamp(17px,2vw,21px); color:var(--muted); max-width:820px; margin:0 0 22px}
+
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); padding:26px 28px}
+
+  /* title screen */
+  .title-cta{display:flex; gap:12px; flex-wrap:wrap; margin-top:26px}
+  .btn{
+    display:inline-flex; align-items:center; gap:9px; cursor:pointer;
+    background:var(--accent); color:#fff; border:none; border-radius:10px;
+    padding:13px 20px; font-size:16px; font-weight:650;
+  }
+  @media (prefers-color-scheme:light){ .btn{color:#fff} }
+  .btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--line)}
+  .meta-row{display:flex; gap:26px; flex-wrap:wrap; margin-top:30px; color:var(--muted); font-size:14px}
+  .meta-row b{color:var(--ink); font-weight:650}
+
+  /* card slide */
+  .card-head{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:6px}
+  .comp-chip{
+    background:var(--panel2); border:1px solid var(--line); border-radius:999px;
+    padding:5px 14px; font-weight:700; font-size:14px; color:var(--accent);
+  }
+  .ask{font-size:clamp(20px,2.6vw,27px); font-weight:650; margin:4px 0 4px; letter-spacing:-.01em}
+  .ask-sub{color:var(--muted); margin:0 0 18px}
+  .reveal{
+    border:1px solid var(--line); border-radius:12px; padding:0 18px; margin-top:14px;
+    max-height:0; overflow:hidden; opacity:0; transition:max-height .35s ease,opacity .3s ease,padding .35s ease;
+  }
+  .reveal.show{max-height:420px; opacity:1; padding:16px 18px}
+  .reveal .tag{display:inline-flex; align-items:center; gap:8px; font-weight:700; font-size:13px; letter-spacing:.06em; text-transform:uppercase}
+  .reveal.risk{background:color-mix(in srgb,var(--risk) 9%,transparent); border-color:color-mix(in srgb,var(--risk) 45%,var(--line))}
+  .reveal.risk .tag{color:var(--risk)}
+  .reveal.ctrl{background:color-mix(in srgb,var(--ctrl) 9%,transparent); border-color:color-mix(in srgb,var(--ctrl) 45%,var(--line))}
+  .reveal.ctrl .tag{color:var(--ctrl)}
+  .reveal h3{margin:7px 0 6px; font-size:20px}
+  .reveal p{margin:6px 0 0; color:var(--ink)}
+  .reveal .foot{margin-top:10px; color:var(--muted); font-size:13.5px}
+  .trifecta{display:inline-block; margin-left:8px; color:var(--warn); border:1px solid color-mix(in srgb,var(--warn) 50%,var(--line)); border-radius:999px; padding:2px 10px; font-size:12px; font-weight:700}
+  .prompt-pill{display:inline-flex; gap:8px; align-items:center; background:var(--panel2); border:1px dashed var(--line); border-radius:10px; padding:8px 12px; color:var(--muted); font-size:13.5px; margin-top:4px}
+
+  /* diagram */
+  .diagram{width:100%; height:auto; display:block}
+  .legend{display:flex; gap:18px; flex-wrap:wrap; color:var(--muted); font-size:13.5px; margin-top:14px}
+  .legend span{display:inline-flex; align-items:center; gap:7px}
+  .dot{width:11px; height:11px; border-radius:3px; display:inline-block}
+
+  /* checklist / coverage */
+  .cov{display:flex; align-items:baseline; gap:12px; margin:2px 0 18px}
+  .cov .num{font-size:46px; font-weight:800; color:var(--ctrl); font-variant-numeric:tabular-nums}
+  .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px}
+  .grid .item{display:flex; gap:10px; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:11px 13px; font-size:14.5px}
+  .grid .item b{display:block}
+  .check{color:var(--ctrl); font-weight:800}
+
+  /* top10 list */
+  .ten{display:grid; grid-template-columns:repeat(2,1fr); gap:8px 20px}
+  .ten .row{display:flex; gap:10px; padding:6px 0; border-bottom:1px solid var(--line); font-size:14.5px}
+  .ten .id{color:var(--accent); font-weight:700; min-width:58px}
+  .ten .row.hot .id{color:var(--risk)}
+
+  /* qr / end */
+  .qr-wrap{display:flex; gap:28px; align-items:center; flex-wrap:wrap}
+  #qr{background:#fff; padding:14px; border-radius:14px; box-shadow:var(--shadow)}
+  #qr svg{display:block}
+  #qr .qrline{stroke-width:1}
+  .end-list{margin:14px 0 0; padding:0; list-style:none; color:var(--muted); font-size:14.5px}
+  .end-list li{margin:6px 0}
+  .link{color:var(--accent); word-break:break-all}
+
+  @media (max-width:720px){
+    .grid,.ten{grid-template-columns:1fr}
+    main{padding:18px 14px}
+    .panel{padding:20px 16px}
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="logo">Defender's<span>·</span>Deck</div>
+  <div class="sub">Agentic AI threat modeling · TMC Toronto</div>
+  <div class="spacer"></div>
+  <div class="progress" id="prog">—</div>
+  <button id="themeBtn" title="Toggle theme">◐ Theme</button>
+</header>
+
+<div class="rail" id="rail"></div>
+
+<main><div class="stage" id="stage"></div></main>
+
+<footer class="hint">
+  <kbd>→</kbd> next · <kbd>←</kbd> back · <kbd>Space</kbd> reveal · <kbd>F</kbd> fullscreen · <kbd>R</kbd> restart
+</footer>
+
+<script>
+/* ---------------- deck data ---------------- */
+const CARDS = [
+  {
+    comp:"C3 · Mail connector",
+    ask:"An attacker can't log in. But the agent reads every vendor email into the same context window as the employee's instructions. What can go wrong?",
+    sub:"read_inbox pulls attacker-authored text straight into the prompt.",
+    risk:{ id:"ASI01", name:"Agent Goal Hijack",
+      body:"Text inside an email (\"ignore prior instructions, do X\") is read with the same authority as the user. The agent's goal gets quietly rewritten by content it was only supposed to summarize." },
+    ctrl:{ name:"Isolate untrusted content",
+      body:"Spotlight / delimit external text so the model treats it as data, not instructions. Never let tool output escalate privileges. Assume every inbound message is adversarial.",
+      foot:"Why injection can't be fixed at the model level: the model can't reliably tell trusted instructions from untrusted data in one context." },
+    trifecta:true
+  },
+  {
+    comp:"C5 · Browser tool",
+    ask:"The agent can fetch_url to research a vendor, and it has just read payroll data. Both powers in one loop — what's the combined risk?",
+    sub:"Untrusted content in + an outbound channel out + private data = the lethal trifecta.",
+    risk:{ id:"ASI01 → exfiltration", name:"Goal Hijack used for data theft",
+      body:"A malicious page tells the agent to fetch a URL with sensitive data encoded in the query string. The 'research' tool becomes a data-exfiltration channel. (cf. EchoLeak, CVE-2025-32711 — zero-click exfil via an AI assistant.)" },
+    ctrl:{ name:"Egress allowlist + no secrets in URLs",
+      body:"Restrict fetch_url to vetted domains. Break the trifecta: if the agent touches private data, cut its outbound reach; if it needs the open web, keep private data out of that path.",
+      foot:"Lethal trifecta = private data + untrusted content + an outbound channel. Remove any one leg and exfiltration breaks." },
+    trifecta:true
+  },
+  {
+    comp:"C2 · Service account",
+    ask:"Ledger Buddy runs under one shared service account that can read the entire finance share — for everyone. Why does a defender flag this before anything is even attacked?",
+    sub:"The identity question: whose permissions is the agent acting with?",
+    risk:{ id:"ASI03", name:"Identity and Privilege Abuse",
+      body:"The classic confused deputy: the agent holds broad standing permissions, so anyone who can influence it (a user, an email, a web page) borrows those permissions. Blast radius = everything the service account can reach." },
+    ctrl:{ name:"Least privilege + per-user scoping",
+      body:"Scope the agent's access to the requesting employee's own entitlements, not a god-mode service account. Short-lived, narrowly-scoped tokens per task.",
+      foot:"The confused deputy problem is about standing authority, not a clever payload — that's why least privilege is the first control." },
+    trifecta:false
+  },
+  {
+    comp:"C6 · Payments connector",
+    ask:"create_payment_draft is the crown jewel — it moves money (via a human approver). How should the agent be allowed to touch it?",
+    sub:"The high-value action. Where does the human belong?",
+    risk:{ id:"ASI02", name:"Tool Misuse and Exploitation",
+      body:"A hijacked agent redirects a payment, changes banking details from a 'vendor' email, or drafts a payment it was never asked to. The tool works perfectly — it's just being driven by the wrong intent." },
+    ctrl:{ name:"Human approval for high-risk actions",
+      body:"Gate money-movement and other irreversible actions behind an explicit human decision that shows the full context (amount, payee, source of the request).",
+      foot:"Watch the failure mode: rubber-stamp approvals become ASI09 (Human-Agent Trust Exploitation). The approval must be meaningful, not a reflex click." },
+    trifecta:false
+  },
+  {
+    comp:"C3 · Connector updates",
+    ask:"The mail connector is a third-party MCP server that auto-updates. Its tool descriptions are read by the agent. What's the supply-chain angle?",
+    sub:"You didn't write the connector — and its metadata is model-visible.",
+    risk:{ id:"ASI04", name:"Agentic Supply Chain Vulnerabilities",
+      body:"A compromised or 'rug-pulled' update can change a tool's description to steer the agent (e.g. silently add behavior), or ship a backdoored version. The agent trusts the connector's self-description." },
+    ctrl:{ name:"Tool vetting + version pinning",
+      body:"Pin and hash connector versions, review changes before they roll out, and treat tool descriptions as untrusted input. Maintain an inventory (AIBOM) of every connector the agent can call.",
+      foot:"MCP connectors are dependencies. Govern them like any other software supply chain." },
+    trifecta:false
+  },
+  {
+    comp:"C7 · Agent memory",
+    ask:"Memory (past chats + vendor notes) is a vector store shared across all users. One person's session writes what everyone's session can read. Risk?",
+    sub:"Persistence changes the game: a bad entry outlives the conversation.",
+    risk:{ id:"ASI06", name:"Memory & Context Poisoning",
+      body:"A planted note ('Vendor X's new bank account is …') persists and resurfaces in later, unrelated sessions — a time-delayed hijack. Cross-user memory also leaks one person's context into another's." },
+    ctrl:{ name:"Scope & validate memory",
+      body:"Partition memory per user/tenant, validate and attribute every write, and expire entries. Don't let free-text memory silently become instructions on read-back.",
+      foot:"Poisoned memory is injection with a long fuse — the attack and the trigger happen in different sessions." },
+    trifecta:false
+  },
+  {
+    comp:"C8 · Logging",
+    ask:"Today only app logs exist — individual tool calls aren't logged. An incident just happened. What can the responder actually reconstruct?",
+    sub:"The control that makes every other control auditable.",
+    risk:{ id:"Cross-cutting", name:"No tool-call audit trail",
+      body:"Without a record of which tool was called, with what arguments, triggered by which input, you can't tell a hijack from normal use, scope the blast radius, or prove least-privilege held. Detection and response are blind." },
+    ctrl:{ name:"Log every tool call",
+      body:"Record each tool invocation: caller, inputs, source of the instruction, decision, outcome. Make it tamper-evident. This is what turns the other seven controls from 'configured' into 'verifiable'.",
+      foot:"Logging doesn't prevent the first incident — it prevents the second, and proves the first." },
+    trifecta:false
+  }
+];
+
+const TEN = [
+  ["ASI01","Agent Goal Hijack",true],
+  ["ASI02","Tool Misuse and Exploitation",true],
+  ["ASI03","Identity and Privilege Abuse",true],
+  ["ASI04","Agentic Supply Chain Vulnerabilities",true],
+  ["ASI05","Unexpected Code Execution (RCE)",false],
+  ["ASI06","Memory & Context Poisoning",true],
+  ["ASI07","Insecure Inter-Agent Communication",false],
+  ["ASI08","Cascading Failures",false],
+  ["ASI09","Human-Agent Trust Exploitation",true],
+  ["ASI10","Rogue Agents",false]
+];
+
+const CHECKLIST = [
+  ["Isolate untrusted content","Treat all email / web / tool output as data, never instructions"],
+  ["Least privilege","Scope to the requesting user; no god-mode service account"],
+  ["Human approval","Gate irreversible / high-value actions, with full context"],
+  ["Break the lethal trifecta","Private data + untrusted input + egress — remove one leg"],
+  ["Egress controls","Allowlist outbound domains; no secrets in URLs"],
+  ["Tool vetting","Pin & review connector versions; keep an AIBOM"],
+  ["Scope memory","Partition per user; validate every write; expire entries"],
+  ["Audit every tool call","Tamper-evident log of caller, input, decision, outcome"]
+];
+
+/* ---------------- build slide list ---------------- */
+const SLIDES = [];
+SLIDES.push({type:"title"});
+SLIDES.push({type:"system"});
+CARDS.forEach((c,i)=>SLIDES.push({type:"card", card:c, n:i+1}));
+SLIDES.push({type:"trifecta"});
+SLIDES.push({type:"checklist"});
+SLIDES.push({type:"ten"});
+SLIDES.push({type:"end"});
+
+let idx=0;            // current slide
+let revealStage=0;    // for card slides: 0 none, 1 risk, 2 risk+ctrl
+
+const stage=document.getElementById('stage');
+const prog=document.getElementById('prog');
+const rail=document.getElementById('rail');
+
+/* progress rail */
+SLIDES.forEach(()=>{const i=document.createElement('i'); rail.appendChild(i);});
+function paintRail(){
+  [...rail.children].forEach((el,i)=>{
+    el.className = i<idx ? 'done' : (i===idx ? 'cur' : '');
+  });
+}
+
+function esc(s){return s.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+
+function render(){
+  const s=SLIDES[idx];
+  prog.textContent = `${idx+1} / ${SLIDES.length}`;
+  paintRail();
+  if(s.type==="title") stage.innerHTML = tplTitle();
+  else if(s.type==="system") stage.innerHTML = tplSystem();
+  else if(s.type==="card") stage.innerHTML = tplCard(s.card,s.n);
+  else if(s.type==="trifecta") stage.innerHTML = tplTrifecta();
+  else if(s.type==="checklist") stage.innerHTML = tplChecklist();
+  else if(s.type==="ten") stage.innerHTML = tplTen();
+  else if(s.type==="end"){ stage.innerHTML = tplEnd(); drawQR(); }
+  bindButtons();
+}
+
+function tplTitle(){
+  return `<div class="slide">
+    <p class="eyebrow">Threat Modeling Connect · Toronto</p>
+    <h1>Defender's Deck</h1>
+    <p class="lede">We threat-model one AI agent together — as defenders. For each part of the
+    system you call the risk; the deck reveals where it lands in the <b>OWASP Top 10 for Agentic
+    Applications (2026)</b> and the control that stops it.</p>
+    <div class="panel">
+      <b>How this works</b>
+      <div class="meta-row">
+        <span><b>7</b> components to defend</span>
+        <span><b>10 min</b> — shout out risks before each reveal</span>
+        <span>No live attack · no code runs · everything fictional</span>
+      </div>
+    </div>
+    <div class="title-cta">
+      <button class="btn" data-next>Start →</button>
+      <button class="btn ghost" data-goto="${SLIDES.findIndex(x=>x.type==='ten')}">See the full OWASP list</button>
+    </div>
+  </div>`;
+}
+
+function tplSystem(){
+  return `<div class="slide">
+    <p class="eyebrow">The system · fictional</p>
+    <h2>“Ledger Buddy” — an accounts-payable agent</h2>
+    <p class="lede">A Toronto fintech's AP team uses it to triage vendor email, look up invoices,
+    research vendors, and draft payments for human approval. Here's the architecture.</p>
+    <div class="panel">
+      ${DIAGRAM}
+      <div class="legend">
+        <span><i class="dot" style="background:var(--accent)"></i> trusted input</span>
+        <span><i class="dot" style="background:var(--risk)"></i> untrusted content enters</span>
+        <span><i class="dot" style="background:var(--warn)"></i> outbound channel</span>
+        <span><i class="dot" style="background:var(--ctrl)"></i> high-value action</span>
+      </div>
+    </div>
+    <div class="title-cta"><button class="btn" data-next>Start defending →</button></div>
+  </div>`;
+}
+
+function tplCard(c,n){
+  return `<div class="slide">
+    <div class="card-head">
+      <span class="comp-chip">${esc(c.comp)}</span>
+      <span style="color:var(--muted);font-size:13px">Card ${n} of ${CARDS.length}</span>
+      ${c.trifecta?`<span class="trifecta">⚠ lethal-trifecta leg</span>`:``}
+    </div>
+    <p class="ask">${esc(c.ask)}</p>
+    <p class="ask-sub">${esc(c.sub)}</p>
+    <div class="prompt-pill">🗣️ Ask the room first — then press <kbd>Space</kbd> to reveal</div>
+
+    <div class="reveal risk" id="rv-risk">
+      <span class="tag">▲ Risk · ${esc(c.risk.id)}</span>
+      <h3>${esc(c.risk.name)}</h3>
+      <p>${esc(c.risk.body)}</p>
+    </div>
+
+    <div class="reveal ctrl" id="rv-ctrl">
+      <span class="tag">✓ Control</span>
+      <h3>${esc(c.ctrl.name)}</h3>
+      <p>${esc(c.ctrl.body)}</p>
+      <p class="foot">${esc(c.ctrl.foot)}</p>
+    </div>
+  </div>`;
+}
+
+function tplTrifecta(){
+  return `<div class="slide">
+    <p class="eyebrow">The pattern underneath</p>
+    <h2>The lethal trifecta</h2>
+    <p class="lede">Most of what we just covered collapses into one idea. An agent becomes a
+    data-exfiltration engine when all three are true at once:</p>
+    <div class="panel">
+      <div class="grid">
+        <div class="item"><span>🔐</span><div><b>Access to private data</b>payroll, customer list, the finance share</div></div>
+        <div class="item"><span>📥</span><div><b>Exposure to untrusted content</b>email bodies, web pages, tool output</div></div>
+        <div class="item"><span>📤</span><div><b>An outbound channel</b>send_email, fetch_url with a query string</div></div>
+        <div class="item" style="background:color-mix(in srgb,var(--ctrl) 10%,transparent);border-color:var(--ctrl)"><span class="check">✓</span><div><b>Remove any one leg</b>and exfiltration breaks — that's your design lever</div></div>
+      </div>
+    </div>
+    <p class="lede" style="margin-top:18px">This is also why prompt injection can't be patched in the
+    model: as long as untrusted content and trusted instructions share a context window, the model
+    can't reliably tell them apart. So we defend around the model, not inside it.</p>
+  </div>`;
+}
+
+function tplChecklist(){
+  return `<div class="slide">
+    <p class="eyebrow">What you take home</p>
+    <h2>The agent defense checklist</h2>
+    <div class="cov"><span class="num">${CARDS.length}</span><span style="color:var(--muted)">components defended · 8 controls to carry into your own systems</span></div>
+    <div class="panel">
+      <div class="grid">
+        ${CHECKLIST.map(([a,b])=>`<div class="item"><span class="check">✓</span><div><b>${esc(a)}</b>${esc(b)}</div></div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function tplTen(){
+  return `<div class="slide">
+    <p class="eyebrow">Reference</p>
+    <h2>OWASP Top 10 for Agentic Applications — 2026</h2>
+    <p class="lede">Published Dec 2025 by the OWASP GenAI Security Project. Highlighted rows are
+    the ones this deck exercised.</p>
+    <div class="panel">
+      <div class="ten">
+        ${TEN.map(([id,name,hot])=>`<div class="row ${hot?'hot':''}"><span class="id">${id}</span><span>${esc(name)}</span></div>`).join('')}
+      </div>
+    </div>
+    <p class="hint" style="color:var(--muted);font-size:13px;margin-top:14px">Also worth a look: CSA MAESTRO (7-layer agentic threat modeling) and Simon Willison's "lethal trifecta".</p>
+  </div>`;
+}
+
+function tplEnd(){
+  return `<div class="slide">
+    <p class="eyebrow">Thank you</p>
+    <h2>Grab the deck & the scenario</h2>
+    <div class="panel qr-wrap">
+      <div id="qr" title="repo QR"></div>
+      <div>
+        <b style="font-size:18px">Everything from tonight is open source.</b>
+        <ul class="end-list">
+          <li>This deck (runs offline, single HTML file)</li>
+          <li>The Ledger Buddy scenario + facilitator script</li>
+          <li>The OWASP / MAESTRO references</li>
+        </ul>
+        <p style="margin-top:12px"><a class="link" id="repoLink" href="#"></a></p>
+        <p style="color:var(--muted);font-size:13.5px">Question the posture. Then go log your tool calls.</p>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ---------------- architecture diagram (inline SVG) ---------------- */
+const DIAGRAM = `
+<svg class="diagram" viewBox="0 0 980 360" role="img" aria-label="Ledger Buddy architecture">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9aa7b4"/>
+    </marker>
+    <style>
+      .box{fill:var(--panel2);stroke:var(--line);stroke-width:1.5;rx:12}
+      .t{fill:var(--ink);font:13px -apple-system,Segoe UI,Roboto,sans-serif;font-weight:600}
+      .ts{fill:var(--muted);font:11px -apple-system,Segoe UI,Roboto,sans-serif}
+      .edge{stroke:#9aa7b4;stroke-width:1.6;fill:none;marker-end:url(#arr)}
+    </style>
+  </defs>
+
+  <!-- user -->
+  <rect class="box" x="24" y="150" width="140" height="60" rx="12" style="stroke:var(--accent)"/>
+  <text class="t" x="94" y="178" text-anchor="middle">Employee (SSO)</text>
+  <text class="ts" x="94" y="196" text-anchor="middle">C1 · trusted input</text>
+
+  <!-- agent -->
+  <rect class="box" x="400" y="130" width="180" height="100" rx="14" style="stroke:var(--accent)"/>
+  <text class="t" x="490" y="170" text-anchor="middle">Ledger Buddy agent</text>
+  <text class="ts" x="490" y="189" text-anchor="middle">C2 · planner + LLM</text>
+  <text class="ts" x="490" y="205" text-anchor="middle">one service account</text>
+
+  <!-- connectors right -->
+  <rect class="box" x="700" y="24" width="256" height="48" rx="11" style="stroke:var(--risk)"/>
+  <text class="t" x="716" y="44">C3 · Mail (read/send)</text>
+  <text class="ts" x="716" y="62">untrusted in · outbound out</text>
+
+  <rect class="box" x="700" y="90" width="256" height="48" rx="11" style="stroke:var(--ctrl)"/>
+  <text class="t" x="716" y="110">C4 · Drive (read finance share)</text>
+  <text class="ts" x="716" y="128">payroll · PII · customer list</text>
+
+  <rect class="box" x="700" y="156" width="256" height="48" rx="11" style="stroke:var(--warn)"/>
+  <text class="t" x="716" y="176">C5 · Browser (fetch_url)</text>
+  <text class="ts" x="716" y="194">untrusted in · outbound out</text>
+
+  <rect class="box" x="700" y="222" width="256" height="48" rx="11" style="stroke:var(--ctrl)"/>
+  <text class="t" x="716" y="242">C6 · Payments (draft)</text>
+  <text class="ts" x="716" y="260">high-value · human approver</text>
+
+  <rect class="box" x="700" y="288" width="256" height="48" rx="11"/>
+  <text class="t" x="716" y="308">C7 · Memory (shared)</text>
+  <text class="ts" x="716" y="326">cross-user vector store</text>
+
+  <!-- logs under agent -->
+  <rect class="box" x="400" y="280" width="180" height="46" rx="11"/>
+  <text class="t" x="490" y="300" text-anchor="middle">C8 · Logs</text>
+  <text class="ts" x="490" y="317" text-anchor="middle">app only · no tool calls</text>
+
+  <!-- edges -->
+  <path class="edge" d="M164,180 L398,180"/>
+  <path class="edge" d="M580,160 L698,48"/>
+  <path class="edge" d="M580,170 L698,114"/>
+  <path class="edge" d="M580,185 L698,180"/>
+  <path class="edge" d="M580,200 L698,246"/>
+  <path class="edge" d="M580,215 L698,312"/>
+  <path class="edge" d="M490,230 L490,278"/>
+</svg>`;
+
+/* ---------------- QR (offline, dependency-free) ---------------- */
+const REPO_URL = "https://github.com/sumitgiri87/defenders-deck";
+
+function bindButtons(){
+  stage.querySelectorAll('[data-next]').forEach(b=>b.onclick=()=>go(1));
+  stage.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>{idx=+b.dataset.goto; revealStage=0; render();});
+  const rl=document.getElementById('repoLink');
+  if(rl){ rl.textContent=REPO_URL; rl.href=REPO_URL; }
+}
+
+const QR_SVG = `<svg width="222" height="222" class="segno"><g transform="scale(6)"><path fill="#fff" d="M0 0h37v37h-37z"/><path class="qrline" stroke="#000" d="M2 2.5h7m1 0h1m2 0h1m1 0h1m1 0h1m2 0h1m2 0h2m3 0h7m-33 1h1m5 0h1m1 0h5m1 0h1m2 0h2m1 0h1m1 0h1m3 0h1m5 0h1m-33 1h1m1 0h3m1 0h1m2 0h1m3 0h1m2 0h1m3 0h2m4 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m2 0h4m1 0h1m3 0h1m1 0h2m2 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m4 0h1m2 0h2m1 0h5m1 0h1m2 0h1m1 0h3m1 0h1m-33 1h1m5 0h1m3 0h1m2 0h1m1 0h1m4 0h2m2 0h1m1 0h1m5 0h1m-33 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-22 1h1m1 0h1m1 0h2m2 0h1m3 0h1m-23 1h1m4 0h3m2 0h1m2 0h4m2 0h1m2 0h1m1 0h1m5 0h2m-32 1h2m4 0h3m1 0h5m2 0h2m2 0h2m4 0h3m-31 1h1m3 0h1m1 0h1m2 0h4m1 0h1m3 0h1m1 0h3m1 0h3m1 0h1m1 0h2m-31 1h5m1 0h1m2 0h2m4 0h1m1 0h2m2 0h1m1 0h9m-33 1h1m1 0h1m1 0h4m5 0h1m3 0h4m3 0h1m1 0h2m4 0h1m-33 1h2m2 0h1m5 0h3m1 0h3m1 0h6m2 0h1m4 0h2m-33 1h3m1 0h1m1 0h1m1 0h1m3 0h3m2 0h1m2 0h1m1 0h1m2 0h2m1 0h4m-31 1h1m1 0h1m1 0h1m2 0h2m1 0h1m2 0h1m2 0h1m4 0h1m2 0h1m1 0h4m1 0h1m-33 1h2m1 0h1m1 0h2m1 0h1m2 0h3m1 0h3m2 0h1m1 0h1m1 0h2m1 0h3m2 0h1m-31 1h3m3 0h2m1 0h1m1 0h1m5 0h2m2 0h1m2 0h1m2 0h2m1 0h1m-33 1h3m3 0h1m1 0h4m1 0h3m3 0h1m2 0h3m1 0h2m1 0h2m1 0h1m-33 1h3m1 0h2m1 0h4m1 0h2m1 0h6m7 0h3m-30 1h1m3 0h3m1 0h1m6 0h1m1 0h2m2 0h1m1 0h2m2 0h2m1 0h1m-32 1h1m2 0h3m1 0h1m1 0h2m2 0h1m2 0h4m3 0h1m4 0h1m1 0h1m-31 1h1m1 0h1m2 0h3m1 0h1m5 0h1m2 0h1m5 0h2m1 0h1m3 0h1m-32 1h1m1 0h2m4 0h1m1 0h3m3 0h1m3 0h1m1 0h2m1 0h2m1 0h4m-32 1h2m1 0h1m1 0h2m1 0h4m3 0h3m1 0h2m2 0h7m-22 1h1m1 0h5m1 0h1m1 0h2m3 0h2m3 0h1m1 0h3m-33 1h7m1 0h1m1 0h2m1 0h3m4 0h1m2 0h2m1 0h1m1 0h1m1 0h2m-32 1h1m5 0h1m4 0h4m1 0h1m1 0h1m4 0h2m3 0h5m-33 1h1m1 0h3m1 0h1m2 0h1m1 0h4m1 0h2m1 0h1m4 0h6m2 0h1m-33 1h1m1 0h3m1 0h1m5 0h2m3 0h1m1 0h3m1 0h3m1 0h2m3 0h1m-33 1h1m1 0h3m1 0h1m2 0h2m1 0h6m1 0h1m3 0h1m1 0h1m1 0h2m1 0h3m-33 1h1m5 0h1m1 0h1m3 0h3m1 0h3m1 0h1m1 0h1m2 0h1m1 0h2m1 0h1m-31 1h7m6 0h3m2 0h2m2 0h4m1 0h1m1 0h1m1 0h1"/></g></svg>`;
+function drawQR(){
+  const host=document.getElementById('qr'); if(!host) return;
+  host.innerHTML = QR_SVG;
+}
+
+/* ---------------- navigation ---------------- */
+function go(d){
+  const s=SLIDES[idx];
+  // on a card, first advances reveal stages, then moves on
+  if(d>0 && s.type==="card" && revealStage<2){ reveal(); return; }
+  const ni=idx+d;
+  if(ni<0||ni>=SLIDES.length) return;
+  idx=ni; revealStage=0; render();
+}
+function reveal(){
+  const s=SLIDES[idx];
+  if(s.type!=="card") return;
+  if(revealStage===0){ document.getElementById('rv-risk').classList.add('show'); revealStage=1; }
+  else if(revealStage===1){ document.getElementById('rv-ctrl').classList.add('show'); revealStage=2; }
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==="ArrowRight") { go(1); e.preventDefault(); }
+  else if(e.key==="ArrowLeft") { go(-1); e.preventDefault(); }
+  else if(e.key===" "){ const s=SLIDES[idx]; if(s.type==="card"&&revealStage<2){reveal();} else {go(1);} e.preventDefault(); }
+  else if(e.key.toLowerCase()==="f"){ toggleFs(); }
+  else if(e.key.toLowerCase()==="r"){ idx=0; revealStage=0; render(); }
+});
+function toggleFs(){ if(!document.fullscreenElement) document.documentElement.requestFullscreen?.(); else document.exitFullscreen?.(); }
+
+document.getElementById('themeBtn').onclick=()=>{
+  const cur=document.documentElement.getAttribute('data-theme');
+  const next = cur==='dark' ? 'light' : (cur==='light' ? '' : 'dark');
+  if(next) document.documentElement.setAttribute('data-theme',next);
+  else document.documentElement.removeAttribute('data-theme');
+};
+
+/* ---------------- boot ---------------- */
+render();
+</script>
+</body>
+</html>
